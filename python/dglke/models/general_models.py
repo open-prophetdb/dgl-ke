@@ -327,7 +327,9 @@ class KEModel(object):
         self.tail_neg_prepare = self.score_func.create_neg_prepare(False)
 
         self.reset_parameters()
-        if self.check_emb_files(args.data_path):
+        checked = self.check_emb_files(args.data_path)
+        print("Check data files in {}, result: {}".format(args.data_path, checked))
+        if checked:
             print("Load embeddings from disk")
             self.load_emb_from_disk(args.data_path)
 
@@ -378,7 +380,7 @@ class KEModel(object):
 
     def get_emb_files(self, datadir):
         entity_emb_file = os.path.join(datadir, "entities_embeddings.tsv")
-        relation_emb_file = os.path.join(datadir, "relations_embeddings.tsv")
+        relation_emb_file = os.path.join(datadir, "relation_types_embeddings.tsv")
         entity_idx_id_file = os.path.join(datadir, "entities.tsv")
         relation_idx_id_file = os.path.join(datadir, "relations.tsv")
         return [
@@ -396,12 +398,16 @@ class KEModel(object):
             relation_idx_id_file,
         ) = self.get_emb_files(datadir)
         if not os.path.exists(entity_emb_file):
+            print("File {} not exists".format(entity_emb_file))
             return False
         if not os.path.exists(relation_emb_file):
+            print("File {} not exists".format(relation_emb_file))
             return False
         if not os.path.exists(entity_idx_id_file):
+            print("File {} not exists".format(entity_idx_id_file))
             return False
         if not os.path.exists(relation_idx_id_file):
+            print("File {} not exists".format(relation_idx_id_file))
             return False
 
         return True
@@ -414,11 +420,9 @@ class KEModel(object):
             relation_idx_id_file,
         ) = self.get_emb_files(datadir)
 
-        entity_idx_ids = pd.read_csv(
-            entity_idx_id_file, sep="\t", columns=["idx", "id"]
-        )
+        entity_idx_ids = pd.read_csv(entity_idx_id_file, sep="\t", names=["idx", "id"])
         relation_idx_ids = pd.read_csv(
-            relation_idx_id_file, sep="\t", columns=["idx", "id"]
+            relation_idx_id_file, sep="\t", names=["idx", "id"]
         )
 
         entity_embs = self.entity_emb.read_emb_from_disk(

@@ -358,7 +358,7 @@ class ExternalEmbedding:
 
         # Check if embedding is NaN and replace with a random embedding
         merged_df['embedding'] = merged_df['embedding'].apply(
-            lambda x: random_embedding(embedding_length) if pd.isna(x).any() else x
+            lambda x: random_embedding(embedding_length) if pd.isna(x) else x
         )        
 
         # Sort the merged dataframe by 'index' to ensure the order is correct
