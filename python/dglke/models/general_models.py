@@ -28,11 +28,12 @@ Graph Embedding Model
 """
 import os
 import numpy as np
+import pandas as pd
 import math
 import dgl.backend as F
 
-backend = os.environ.get('DGLBACKEND', 'pytorch')
-if backend.lower() == 'mxnet':
+backend = os.environ.get("DGLBACKEND", "pytorch")
+if backend.lower() == "mxnet":
     from .mxnet.tensor_models import masked_select
     from .mxnet.tensor_models import logsigmoid
     from .mxnet.tensor_models import abs
@@ -44,6 +45,7 @@ if backend.lower() == 'mxnet':
     from .mxnet.tensor_models import ExternalEmbedding
     from .mxnet.tensor_models import InferEmbedding
     from .mxnet.score_fun import *
+
     DEFAULT_INFER_BATCHSIZE = 1024
 else:
     from .pytorch.tensor_models import logsigmoid
@@ -58,14 +60,23 @@ else:
     from .pytorch.tensor_models import InferEmbedding
     from .pytorch.score_fun import *
     from .pytorch.loss import LossGenerator
+
     DEFAULT_INFER_BATCHSIZE = 2048
 
 EMB_INIT_EPS = 2.0
 
+
 class InferModel(object):
-    def __init__(self, device, model_name, hidden_dim,
-        double_entity_emb=False, double_relation_emb=False,
-        gamma=0., batch_size=DEFAULT_INFER_BATCHSIZE):
+    def __init__(
+        self,
+        device,
+        model_name,
+        hidden_dim,
+        double_entity_emb=False,
+        double_relation_emb=False,
+        gamma=0.0,
+        batch_size=DEFAULT_INFER_BATCHSIZE,
+    ):
         super(InferModel, self).__init__()
 
         self.device = device
@@ -77,22 +88,22 @@ class InferModel(object):
         self.relation_emb = InferEmbedding(device)
         self.batch_size = batch_size
 
-        if model_name == 'TransE' or model_name == 'TransE_l2':
-            self.score_func = TransEScore(gamma, 'l2')
-        elif model_name == 'TransE_l1':
-            self.score_func = TransEScore(gamma, 'l1')
-        elif model_name == 'TransR':
-            assert False, 'Do not support inference of TransR model now.'
-        elif model_name == 'DistMult':
+        if model_name == "TransE" or model_name == "TransE_l2":
+            self.score_func = TransEScore(gamma, "l2")
+        elif model_name == "TransE_l1":
+            self.score_func = TransEScore(gamma, "l1")
+        elif model_name == "TransR":
+            assert False, "Do not support inference of TransR model now."
+        elif model_name == "DistMult":
             self.score_func = DistMultScore()
-        elif model_name == 'ComplEx':
+        elif model_name == "ComplEx":
             self.score_func = ComplExScore()
-        elif model_name == 'RESCAL':
+        elif model_name == "RESCAL":
             self.score_func = RESCALScore(relation_dim, entity_dim)
-        elif model_name == 'RotatE':
+        elif model_name == "RotatE":
             emb_init = (gamma + EMB_INIT_EPS) / hidden_dim
             self.score_func = RotatEScore(gamma, emb_init)
-        elif model_name == 'SimplE':
+        elif model_name == "SimplE":
             self.score_func = SimplEScore()
 
     def load_emb(self, path, dataset):
@@ -105,9 +116,9 @@ class InferModel(object):
         dataset : str
             Dataset name as prefix to the saved embeddings.
         """
-        self.entity_emb.load(path, dataset+'_'+self.model_name+'_entity')
-        self.relation_emb.load(path, dataset+'_'+self.model_name+'_relation')
-        self.score_func.load(path, dataset+'_'+self.model_name)
+        self.entity_emb.load(path, dataset + "_" + self.model_name + "_entity")
+        self.relation_emb.load(path, dataset + "_" + self.model_name + "_relation")
+        self.score_func.load(path, dataset + "_" + self.model_name)
 
     def score(self, head, rel, tail, triplet_wise=False):
         head_emb = self.entity_emb(head)
@@ -121,14 +132,15 @@ class InferModel(object):
         batch_size = self.batch_size
         score = []
         if triplet_wise:
+
             class FakeEdge(object):
                 def __init__(self, head_emb, rel_emb, tail_emb):
                     self._hobj = {}
                     self._robj = {}
                     self._tobj = {}
-                    self._hobj['emb'] = head_emb
-                    self._robj['emb'] = rel_emb
-                    self._tobj['emb'] = tail_emb
+                    self._hobj["emb"] = head_emb
+                    self._robj["emb"] = rel_emb
+                    self._tobj["emb"] = tail_emb
 
                 @property
                 def src(self):
@@ -143,31 +155,47 @@ class InferModel(object):
                     return self._robj
 
             for i in range((num_head + batch_size - 1) // batch_size):
-                sh_emb = head_emb[i * batch_size : (i + 1) * batch_size \
-                                                   if (i + 1) * batch_size < num_head \
-                                                   else num_head]
-                sr_emb = rel_emb[i * batch_size : (i + 1) * batch_size \
-                                                  if (i + 1) * batch_size < num_head \
-                                                  else num_head]
-                st_emb = tail_emb[i * batch_size : (i + 1) * batch_size \
-                                                   if (i + 1) * batch_size < num_head \
-                                                   else num_head]
+                sh_emb = head_emb[
+                    i * batch_size : (i + 1) * batch_size
+                    if (i + 1) * batch_size < num_head
+                    else num_head
+                ]
+                sr_emb = rel_emb[
+                    i * batch_size : (i + 1) * batch_size
+                    if (i + 1) * batch_size < num_head
+                    else num_head
+                ]
+                st_emb = tail_emb[
+                    i * batch_size : (i + 1) * batch_size
+                    if (i + 1) * batch_size < num_head
+                    else num_head
+                ]
                 edata = FakeEdge(sh_emb, sr_emb, st_emb)
-                score.append(F.copy_to(self.score_func.edge_func(edata)['score'], F.cpu()))
+                score.append(
+                    F.copy_to(self.score_func.edge_func(edata)["score"], F.cpu())
+                )
             score = F.cat(score, dim=0)
             return score
         else:
             for i in range((num_head + batch_size - 1) // batch_size):
-                sh_emb = head_emb[i * batch_size : (i + 1) * batch_size \
-                                                   if (i + 1) * batch_size < num_head \
-                                                   else num_head]
+                sh_emb = head_emb[
+                    i * batch_size : (i + 1) * batch_size
+                    if (i + 1) * batch_size < num_head
+                    else num_head
+                ]
                 s_score = []
                 for j in range((num_tail + batch_size - 1) // batch_size):
-                    st_emb = tail_emb[j * batch_size : (j + 1) * batch_size \
-                                                       if (j + 1) * batch_size < num_tail \
-                                                       else num_tail]
+                    st_emb = tail_emb[
+                        j * batch_size : (j + 1) * batch_size
+                        if (j + 1) * batch_size < num_tail
+                        else num_tail
+                    ]
 
-                    s_score.append(F.copy_to(self.score_func.infer(sh_emb, rel_emb, st_emb), F.cpu()))
+                    s_score.append(
+                        F.copy_to(
+                            self.score_func.infer(sh_emb, rel_emb, st_emb), F.cpu()
+                        )
+                    )
                 score.append(F.cat(s_score, dim=2))
             score = F.cat(score, dim=0)
             return F.reshape(score, (num_head * num_rel * num_tail,))
@@ -180,8 +208,9 @@ class InferModel(object):
     def num_rel(self):
         return self.relation_emb.emb.shape[0]
 
+
 class KEModel(object):
-    """ DGL Knowledge Embedding Model.
+    """DGL Knowledge Embedding Model.
 
     Parameters
     ----------
@@ -205,8 +234,18 @@ class KEModel(object):
         If True, relation embedding size will be 2 * hidden_dim.
         Default: False
     """
-    def __init__(self, args, model_name, n_entities, n_relations, hidden_dim, gamma,
-                 double_entity_emb=False, double_relation_emb=False):
+
+    def __init__(
+        self,
+        args,
+        model_name,
+        n_entities,
+        n_relations,
+        hidden_dim,
+        gamma,
+        double_entity_emb=False,
+        double_relation_emb=False,
+    ):
         super(KEModel, self).__init__()
         self.args = args
         self.has_edge_importance = args.has_edge_importance
@@ -221,16 +260,23 @@ class KEModel(object):
 
         device = get_device(args)
 
-        self.loss_gen = LossGenerator(args,
-                                      args.loss_genre if hasattr(args, 'loss_genre') else 'Logsigmoid',
-                                      args.neg_adversarial_sampling if hasattr(args, 'neg_adversarial_sampling') else False,
-                                      args.adversarial_temperature if hasattr(args, 'adversarial_temperature') else 1.0,
-                                      args.pairwise if hasattr(args, 'pairwise') else False)
+        self.loss_gen = LossGenerator(
+            args,
+            args.loss_genre if hasattr(args, "loss_genre") else "Logsigmoid",
+            args.neg_adversarial_sampling
+            if hasattr(args, "neg_adversarial_sampling")
+            else False,
+            args.adversarial_temperature
+            if hasattr(args, "adversarial_temperature")
+            else 1.0,
+            args.pairwise if hasattr(args, "pairwise") else False,
+        )
 
-        self.entity_emb = ExternalEmbedding(args, n_entities, entity_dim,
-                                            F.cpu() if args.mix_cpu_gpu else device)
+        self.entity_emb = ExternalEmbedding(
+            args, n_entities, entity_dim, F.cpu() if args.mix_cpu_gpu else device
+        )
         # For RESCAL, relation_emb = relation_dim * entity_dim
-        if model_name == 'RESCAL':
+        if model_name == "RESCAL":
             rel_dim = relation_dim * entity_dim
         else:
             rel_dim = relation_dim
@@ -240,31 +286,38 @@ class KEModel(object):
         self.strict_rel_part = args.strict_rel_part
         self.soft_rel_part = args.soft_rel_part
         if not self.strict_rel_part and not self.soft_rel_part:
-            self.relation_emb = ExternalEmbedding(args, n_relations, rel_dim,
-                                                  F.cpu() if args.mix_cpu_gpu else device)
+            self.relation_emb = ExternalEmbedding(
+                args, n_relations, rel_dim, F.cpu() if args.mix_cpu_gpu else device
+            )
         else:
-            self.global_relation_emb = ExternalEmbedding(args, n_relations, rel_dim, F.cpu())
+            self.global_relation_emb = ExternalEmbedding(
+                args, n_relations, rel_dim, F.cpu()
+            )
 
-        if model_name == 'TransE' or model_name == 'TransE_l2':
-            self.score_func = TransEScore(gamma, 'l2')
-        elif model_name == 'TransE_l1':
-            self.score_func = TransEScore(gamma, 'l1')
-        elif model_name == 'TransR':
-            projection_emb = ExternalEmbedding(args,
-                                               n_relations,
-                                               entity_dim * relation_dim,
-                                               F.cpu() if args.mix_cpu_gpu else device)
+        if model_name == "TransE" or model_name == "TransE_l2":
+            self.score_func = TransEScore(gamma, "l2")
+        elif model_name == "TransE_l1":
+            self.score_func = TransEScore(gamma, "l1")
+        elif model_name == "TransR":
+            projection_emb = ExternalEmbedding(
+                args,
+                n_relations,
+                entity_dim * relation_dim,
+                F.cpu() if args.mix_cpu_gpu else device,
+            )
 
-            self.score_func = TransRScore(gamma, projection_emb, relation_dim, entity_dim)
-        elif model_name == 'DistMult':
+            self.score_func = TransRScore(
+                gamma, projection_emb, relation_dim, entity_dim
+            )
+        elif model_name == "DistMult":
             self.score_func = DistMultScore()
-        elif model_name == 'ComplEx':
+        elif model_name == "ComplEx":
             self.score_func = ComplExScore()
-        elif model_name == 'RESCAL':
+        elif model_name == "RESCAL":
             self.score_func = RESCALScore(relation_dim, entity_dim)
-        elif model_name == 'RotatE':
+        elif model_name == "RotatE":
             self.score_func = RotatEScore(gamma, self.emb_init)
-        elif model_name == 'SimplE':
+        elif model_name == "SimplE":
             self.score_func = SimplEScore()
 
         self.model_name = model_name
@@ -274,17 +327,19 @@ class KEModel(object):
         self.tail_neg_prepare = self.score_func.create_neg_prepare(False)
 
         self.reset_parameters()
+        if self.check_emb_files(args.data_path):
+            print("Load embeddings from disk")
+            self.load_emb_from_disk(args.data_path)
 
     def share_memory(self):
-        """Use torch.tensor.share_memory_() to allow cross process embeddings access.
-        """
+        """Use torch.tensor.share_memory_() to allow cross process embeddings access."""
         self.entity_emb.share_memory()
         if self.strict_rel_part or self.soft_rel_part:
             self.global_relation_emb.share_memory()
         else:
             self.relation_emb.share_memory()
 
-        if self.model_name == 'TransR':
+        if self.model_name == "TransR":
             self.score_func.share_memory()
 
     def save_emb(self, path, dataset):
@@ -297,13 +352,15 @@ class KEModel(object):
         dataset : str
             Dataset name as prefix to the saved embeddings.
         """
-        self.entity_emb.save(path, dataset+'_'+self.model_name+'_entity')
+        self.entity_emb.save(path, dataset + "_" + self.model_name + "_entity")
         if self.strict_rel_part or self.soft_rel_part:
-            self.global_relation_emb.save(path, dataset+'_'+self.model_name+'_relation')
+            self.global_relation_emb.save(
+                path, dataset + "_" + self.model_name + "_relation"
+            )
         else:
-            self.relation_emb.save(path, dataset+'_'+self.model_name+'_relation')
+            self.relation_emb.save(path, dataset + "_" + self.model_name + "_relation")
 
-        self.score_func.save(path, dataset+'_'+self.model_name)
+        self.score_func.save(path, dataset + "_" + self.model_name)
 
     def load_emb(self, path, dataset):
         """Load the model.
@@ -315,13 +372,79 @@ class KEModel(object):
         dataset : str
             Dataset name as prefix to the saved embeddings.
         """
-        self.entity_emb.load(path, dataset+'_'+self.model_name+'_entity')
-        self.relation_emb.load(path, dataset+'_'+self.model_name+'_relation')
-        self.score_func.load(path, dataset+'_'+self.model_name)
+        self.entity_emb.load(path, dataset + "_" + self.model_name + "_entity")
+        self.relation_emb.load(path, dataset + "_" + self.model_name + "_relation")
+        self.score_func.load(path, dataset + "_" + self.model_name)
+
+    def get_emb_files(self, datadir):
+        entity_emb_file = os.path.join(datadir, "entities_embeddings.tsv")
+        relation_emb_file = os.path.join(datadir, "relations_embeddings.tsv")
+        entity_idx_id_file = os.path.join(datadir, "entities.tsv")
+        relation_idx_id_file = os.path.join(datadir, "relations.tsv")
+        return [
+            entity_emb_file,
+            relation_emb_file,
+            entity_idx_id_file,
+            relation_idx_id_file,
+        ]
+
+    def check_emb_files(self, datadir):
+        (
+            entity_emb_file,
+            relation_emb_file,
+            entity_idx_id_file,
+            relation_idx_id_file,
+        ) = self.get_emb_files(datadir)
+        if not os.path.exists(entity_emb_file):
+            return False
+        if not os.path.exists(relation_emb_file):
+            return False
+        if not os.path.exists(entity_idx_id_file):
+            return False
+        if not os.path.exists(relation_idx_id_file):
+            return False
+
+        return True
+
+    def load_emb_from_disk(self, datadir):
+        (
+            entity_emb_file,
+            relation_emb_file,
+            entity_idx_id_file,
+            relation_idx_id_file,
+        ) = self.get_emb_files(datadir)
+
+        entity_idx_ids = pd.read_csv(
+            entity_idx_id_file, sep="\t", columns=["idx", "id"]
+        )
+        relation_idx_ids = pd.read_csv(
+            relation_idx_id_file, sep="\t", columns=["idx", "id"]
+        )
+
+        entity_embs = self.entity_emb.read_emb_from_disk(
+            entity_idx_ids, entity_emb_file
+        )
+
+        relation_embs = self.relation_emb.read_emb_from_disk(
+            relation_idx_ids, relation_emb_file
+        )
+
+        try:
+            entity_dims = entity_embs.shape[1]
+            relation_dims = relation_embs.shape[1]
+
+            assert entity_dims == self.entity_emb.emb.shape[1]
+            assert relation_dims == self.relation_emb.emb.shape[1]
+
+            self.entity_emb.load_emb(entity_embs)
+            self.relation_emb.load_emb(relation_embs)
+        except Exception as e:
+            print(e)
+            print("Load embeddings from disk failed, re-initialize embeddings")
+            self.reset_parameters()
 
     def reset_parameters(self):
-        """Re-initialize the model.
-        """
+        """Re-initialize the model."""
         self.entity_emb.init(self.emb_init)
         self.score_func.reset_parameters()
         if (not self.strict_rel_part) and (not self.soft_rel_part):
@@ -343,10 +466,11 @@ class KEModel(object):
             The positive score
         """
         self.score_func(g)
-        return g.edata['score']
+        return g.edata["score"]
 
-    def predict_neg_score(self, pos_g, neg_g, to_device=None, gpu_id=-1, trace=False,
-                          neg_deg_sample=False):
+    def predict_neg_score(
+        self, pos_g, neg_g, to_device=None, gpu_id=-1, trace=False, neg_deg_sample=False
+    ):
         """Calculate the negative score.
 
         Parameters
@@ -376,16 +500,19 @@ class KEModel(object):
         num_chunks = neg_g.num_chunks
         chunk_size = neg_g.chunk_size
         neg_sample_size = neg_g.neg_sample_size
-        mask = F.ones((num_chunks, chunk_size * (neg_sample_size + chunk_size)),
-                      dtype=F.float32, ctx=F.context(pos_g.ndata['emb']))
+        mask = F.ones(
+            (num_chunks, chunk_size * (neg_sample_size + chunk_size)),
+            dtype=F.float32,
+            ctx=F.context(pos_g.ndata["emb"]),
+        )
         if neg_g.neg_head:
-            neg_head_ids = neg_g.ndata['id'][neg_g.head_nid]
+            neg_head_ids = neg_g.ndata["id"][neg_g.head_nid]
             neg_head = self.entity_emb(neg_head_ids, gpu_id, trace)
-            head_ids, tail_ids = pos_g.all_edges(order='eid')
+            head_ids, tail_ids = pos_g.all_edges(order="eid")
             if to_device is not None and gpu_id >= 0:
                 tail_ids = to_device(tail_ids, gpu_id)
-            tail = pos_g.ndata['emb'][tail_ids]
-            rel = pos_g.edata['emb']
+            tail = pos_g.ndata["emb"][tail_ids]
+            rel = pos_g.edata["emb"]
 
             # When we train a batch, we could use the head nodes of the positive edges to
             # construct negative edges. We construct a negative edge between a positive head
@@ -394,37 +521,43 @@ class KEModel(object):
             # edge for a positive head node among the negative edges. We need to mask
             # them.
             if neg_deg_sample:
-                head = pos_g.ndata['emb'][head_ids]
+                head = pos_g.ndata["emb"][head_ids]
                 head = head.reshape(num_chunks, chunk_size, -1)
                 neg_head = neg_head.reshape(num_chunks, neg_sample_size, -1)
                 neg_head = F.cat([head, neg_head], 1)
                 neg_sample_size = chunk_size + neg_sample_size
-                mask[:,0::(neg_sample_size + 1)] = 0
+                mask[:, 0 :: (neg_sample_size + 1)] = 0
             neg_head = neg_head.reshape(num_chunks * neg_sample_size, -1)
-            neg_head, tail = self.head_neg_prepare(pos_g.edata['id'], num_chunks, neg_head, tail, gpu_id, trace)
-            neg_score = self.head_neg_score(neg_head, rel, tail,
-                                            num_chunks, chunk_size, neg_sample_size)
+            neg_head, tail = self.head_neg_prepare(
+                pos_g.edata["id"], num_chunks, neg_head, tail, gpu_id, trace
+            )
+            neg_score = self.head_neg_score(
+                neg_head, rel, tail, num_chunks, chunk_size, neg_sample_size
+            )
         else:
-            neg_tail_ids = neg_g.ndata['id'][neg_g.tail_nid]
+            neg_tail_ids = neg_g.ndata["id"][neg_g.tail_nid]
             neg_tail = self.entity_emb(neg_tail_ids, gpu_id, trace)
-            head_ids, tail_ids = pos_g.all_edges(order='eid')
+            head_ids, tail_ids = pos_g.all_edges(order="eid")
             if to_device is not None and gpu_id >= 0:
                 head_ids = to_device(head_ids, gpu_id)
-            head = pos_g.ndata['emb'][head_ids]
-            rel = pos_g.edata['emb']
+            head = pos_g.ndata["emb"][head_ids]
+            rel = pos_g.edata["emb"]
 
             # This is negative edge construction similar to the above.
             if neg_deg_sample:
-                tail = pos_g.ndata['emb'][tail_ids]
+                tail = pos_g.ndata["emb"][tail_ids]
                 tail = tail.reshape(num_chunks, chunk_size, -1)
                 neg_tail = neg_tail.reshape(num_chunks, neg_sample_size, -1)
                 neg_tail = F.cat([tail, neg_tail], 1)
                 neg_sample_size = chunk_size + neg_sample_size
-                mask[:,0::(neg_sample_size + 1)] = 0
+                mask[:, 0 :: (neg_sample_size + 1)] = 0
             neg_tail = neg_tail.reshape(num_chunks * neg_sample_size, -1)
-            head, neg_tail = self.tail_neg_prepare(pos_g.edata['id'], num_chunks, head, neg_tail, gpu_id, trace)
-            neg_score = self.tail_neg_score(head, rel, neg_tail,
-                                            num_chunks, chunk_size, neg_sample_size)
+            head, neg_tail = self.tail_neg_prepare(
+                pos_g.edata["id"], num_chunks, head, neg_tail, gpu_id, trace
+            )
+            neg_score = self.tail_neg_score(
+                head, rel, neg_tail, num_chunks, chunk_size, neg_sample_size
+            )
 
         if neg_deg_sample:
             neg_g.neg_sample_size = neg_sample_size
@@ -447,21 +580,26 @@ class KEModel(object):
         gpu_id : int
             Which gpu to accelerate the calculation. if -1 is provided, cpu is used.
         """
-        pos_g.ndata['emb'] = self.entity_emb(pos_g.ndata['id'], gpu_id, False)
-        pos_g.edata['emb'] = self.relation_emb(pos_g.edata['id'], gpu_id, False)
+        pos_g.ndata["emb"] = self.entity_emb(pos_g.ndata["id"], gpu_id, False)
+        pos_g.edata["emb"] = self.relation_emb(pos_g.edata["id"], gpu_id, False)
         self.score_func.prepare(pos_g, gpu_id, False)
 
         batch_size = pos_g.number_of_edges()
         pos_scores = self.predict_score(pos_g)
         pos_scores = reshape(pos_scores, batch_size, -1)
 
-        neg_scores = self.predict_neg_score(pos_g, neg_g, to_device=cuda,
-                                            gpu_id=gpu_id, trace=False,
-                                            neg_deg_sample=self.args.neg_deg_sample_eval)
+        neg_scores = self.predict_neg_score(
+            pos_g,
+            neg_g,
+            to_device=cuda,
+            gpu_id=gpu_id,
+            trace=False,
+            neg_deg_sample=self.args.neg_deg_sample_eval,
+        )
         neg_scores = reshape(neg_scores, batch_size, -1)
         # We need to filter the positive edges in the negative graph.
         if self.args.eval_filter:
-            filter_bias = reshape(neg_g.edata['bias'], batch_size, -1)
+            filter_bias = reshape(neg_g.edata["bias"], batch_size, -1)
             if gpu_id >= 0:
                 filter_bias = cuda(filter_bias, gpu_id)
             # find all indices where it is not false negative sample
@@ -473,16 +611,21 @@ class KEModel(object):
         for i in range(batch_size):
             if self.args.eval_filter:
                 # select all the true negative samples where its score >= positive sample
-                ranking = F.asnumpy(F.sum(masked_select(neg_scores[i] >= pos_scores[i], mask[i]), dim=0) + 1)
+                ranking = F.asnumpy(
+                    F.sum(masked_select(neg_scores[i] >= pos_scores[i], mask[i]), dim=0)
+                    + 1
+                )
             else:
                 ranking = F.asnumpy(F.sum(neg_scores[i] >= pos_scores[i], dim=0) + 1)
-            logs.append({
-                'MRR': 1.0 / ranking,
-                'MR': float(ranking),
-                'HITS@1': 1.0 if ranking <= 1 else 0.0,
-                'HITS@3': 1.0 if ranking <= 3 else 0.0,
-                'HITS@10': 1.0 if ranking <= 10 else 0.0
-            })
+            logs.append(
+                {
+                    "MRR": 1.0 / ranking,
+                    "MR": float(ranking),
+                    "HITS@1": 1.0 if ranking <= 1 else 0.0,
+                    "HITS@3": 1.0 if ranking <= 3 else 0.0,
+                    "HITS@10": 1.0 if ranking <= 10 else 0.0,
+                }
+            )
 
     def forward_test_wikikg(self, query, ans, candidate, mode, logs, gpu_id=-1):
         """Do the forward and generate ranking results.
@@ -496,34 +639,42 @@ class KEModel(object):
         cadidate : Tensor
             negative sampled tail entity
         """
-        scores = self.predict_score_wikikg(query, candidate, mode, to_device=cuda, gpu_id=gpu_id, trace=False)
+        scores = self.predict_score_wikikg(
+            query, candidate, mode, to_device=cuda, gpu_id=gpu_id, trace=False
+        )
         if mode == "Valid":
             batch_size = query.shape[0]
             neg_scores = reshape(scores, batch_size, -1)
             for i in range(batch_size):
-                ranking = F.asnumpy(F.sum(neg_scores[i] >= neg_scores[i][ans[i]], dim=0) + 1)
-                logs.append({
-                    'MRR': 1.0 / ranking,
-                    'MR': float(ranking),
-                    'HITS@1': 1.0 if ranking <= 1 else 0.0,
-                    'HITS@3': 1.0 if ranking <= 3 else 0.0,
-                    'HITS@10': 1.0 if ranking <= 10 else 0.0
-                })
+                ranking = F.asnumpy(
+                    F.sum(neg_scores[i] >= neg_scores[i][ans[i]], dim=0) + 1
+                )
+                logs.append(
+                    {
+                        "MRR": 1.0 / ranking,
+                        "MR": float(ranking),
+                        "HITS@1": 1.0 if ranking <= 1 else 0.0,
+                        "HITS@3": 1.0 if ranking <= 3 else 0.0,
+                        "HITS@10": 1.0 if ranking <= 10 else 0.0,
+                    }
+                )
         else:
             argsort = F.argsort(scores, dim=1, descending=True)
-            logs.append(argsort[:,:10])
+            logs.append(argsort[:, :10])
 
-    def predict_score_wikikg(self, query, candidate, mode, to_device=None, gpu_id=-1, trace=False):
+    def predict_score_wikikg(
+        self, query, candidate, mode, to_device=None, gpu_id=-1, trace=False
+    ):
         num_chunks = len(query)
         chunk_size = 1
         neg_sample_size = candidate.shape[1]
         neg_tail = self.entity_emb(candidate.view(-1), gpu_id, False)
-        head = self.entity_emb(query[:,0], gpu_id, False)
-        rel = self.relation_emb(query[:,1], gpu_id, False)
-        neg_score = self.tail_neg_score(head, rel, neg_tail,
-                                        num_chunks, chunk_size, neg_sample_size)
+        head = self.entity_emb(query[:, 0], gpu_id, False)
+        rel = self.relation_emb(query[:, 1], gpu_id, False)
+        neg_score = self.tail_neg_score(
+            head, rel, neg_tail, num_chunks, chunk_size, neg_sample_size
+        )
         return neg_score.squeeze()
-
 
     # @profile
     def forward(self, pos_g, neg_g, gpu_id=-1):
@@ -545,40 +696,53 @@ class KEModel(object):
         dict
             loss info
         """
-        pos_g.ndata['emb'] = self.entity_emb(pos_g.ndata['id'], gpu_id, True)
-        pos_g.edata['emb'] = self.relation_emb(pos_g.edata['id'], gpu_id, True)
+        pos_g.ndata["emb"] = self.entity_emb(pos_g.ndata["id"], gpu_id, True)
+        pos_g.edata["emb"] = self.relation_emb(pos_g.edata["id"], gpu_id, True)
         self.score_func.prepare(pos_g, gpu_id, True)
         pos_score = self.predict_score(pos_g)
         if gpu_id >= 0:
-            neg_score = self.predict_neg_score(pos_g, neg_g, to_device=cuda,
-                                               gpu_id=gpu_id, trace=True,
-                                               neg_deg_sample=self.args.neg_deg_sample)
+            neg_score = self.predict_neg_score(
+                pos_g,
+                neg_g,
+                to_device=cuda,
+                gpu_id=gpu_id,
+                trace=True,
+                neg_deg_sample=self.args.neg_deg_sample,
+            )
         else:
-            neg_score = self.predict_neg_score(pos_g, neg_g, trace=True,
-                                               neg_deg_sample=self.args.neg_deg_sample)
+            neg_score = self.predict_neg_score(
+                pos_g, neg_g, trace=True, neg_deg_sample=self.args.neg_deg_sample
+            )
 
         neg_score = reshape(neg_score, -1, neg_g.neg_sample_size)
         # subsampling weight
         # TODO: add subsampling to new sampler
-        #if self.args.non_uni_weight:
+        # if self.args.non_uni_weight:
         #    subsampling_weight = pos_g.edata['weight']
         #    pos_score = (pos_score * subsampling_weight).sum() / subsampling_weight.sum()
         #    neg_score = (neg_score * subsampling_weight).sum() / subsampling_weight.sum()
-        #else:
-        edge_weight = F.copy_to(pos_g.edata['impts'], get_dev(gpu_id)) if self.has_edge_importance else None
+        # else:
+        edge_weight = (
+            F.copy_to(pos_g.edata["impts"], get_dev(gpu_id))
+            if self.has_edge_importance
+            else None
+        )
         loss, log = self.loss_gen.get_total_loss(pos_score, neg_score, edge_weight)
         # regularization: TODO(zihao)
-        #TODO: only reg ent&rel embeddings. other params to be added.
+        # TODO: only reg ent&rel embeddings. other params to be added.
         if self.args.regularization_coef > 0.0 and self.args.regularization_norm > 0:
             coef, nm = self.args.regularization_coef, self.args.regularization_norm
-            reg = coef * (norm(self.entity_emb.curr_emb(), nm) + norm(self.relation_emb.curr_emb(), nm))
-            log['regularization'] = get_scalar(reg)
+            reg = coef * (
+                norm(self.entity_emb.curr_emb(), nm)
+                + norm(self.relation_emb.curr_emb(), nm)
+            )
+            log["regularization"] = get_scalar(reg)
             loss = loss + reg
 
         return loss, log
 
     def update(self, gpu_id=-1):
-        """ Update the embeddings in the model
+        """Update the embeddings in the model
 
         gpu_id : int
             Which gpu to accelerate the calculation. if -1 is provided, cpu is used.
@@ -588,26 +752,29 @@ class KEModel(object):
         self.score_func.update(gpu_id)
 
     def prepare_relation(self, device=None):
-        """ Prepare relation embeddings in multi-process multi-gpu training model.
+        """Prepare relation embeddings in multi-process multi-gpu training model.
 
         device : th.device
             Which device (GPU) to put relation embeddings in.
         """
-        self.relation_emb = ExternalEmbedding(self.args, self.n_relations, self.rel_dim, device)
+        self.relation_emb = ExternalEmbedding(
+            self.args, self.n_relations, self.rel_dim, device
+        )
         self.relation_emb.init(self.emb_init)
-        if self.model_name == 'TransR':
-            local_projection_emb = ExternalEmbedding(self.args, self.n_relations,
-                                                    self.entity_dim * self.rel_dim, device)
+        if self.model_name == "TransR":
+            local_projection_emb = ExternalEmbedding(
+                self.args, self.n_relations, self.entity_dim * self.rel_dim, device
+            )
             self.score_func.prepare_local_emb(local_projection_emb)
             self.score_func.reset_parameters()
 
     def prepare_cross_rels(self, cross_rels):
         self.relation_emb.setup_cross_rels(cross_rels, self.global_relation_emb)
-        if self.model_name == 'TransR':
+        if self.model_name == "TransR":
             self.score_func.prepare_cross_rels(cross_rels)
 
     def writeback_relation(self, rank=0, rel_parts=None):
-        """ Writeback relation embeddings in a specific process to global relation embedding.
+        """Writeback relation embeddings in a specific process to global relation embedding.
         Used in multi-process multi-gpu training model.
 
         rank : int
@@ -618,63 +785,68 @@ class KEModel(object):
         idx = rel_parts[rank]
         if self.soft_rel_part:
             idx = self.relation_emb.get_noncross_idx(idx)
-        self.global_relation_emb.emb[idx] = F.copy_to(self.relation_emb.emb, F.cpu())[idx]
-        if self.model_name == 'TransR':
+        self.global_relation_emb.emb[idx] = F.copy_to(self.relation_emb.emb, F.cpu())[
+            idx
+        ]
+        if self.model_name == "TransR":
             self.score_func.writeback_local_emb(idx)
 
     def load_relation(self, device=None):
-        """ Sync global relation embeddings into local relation embeddings.
+        """Sync global relation embeddings into local relation embeddings.
         Used in multi-process multi-gpu training model.
 
         device : th.device
             Which device (GPU) to put relation embeddings in.
         """
-        self.relation_emb = ExternalEmbedding(self.args, self.n_relations, self.rel_dim, device)
+        self.relation_emb = ExternalEmbedding(
+            self.args, self.n_relations, self.rel_dim, device
+        )
         self.relation_emb.emb = F.copy_to(self.global_relation_emb.emb, device)
-        if self.model_name == 'TransR':
-            local_projection_emb = ExternalEmbedding(self.args, self.n_relations,
-                                                     self.entity_dim * self.rel_dim, device)
+        if self.model_name == "TransR":
+            local_projection_emb = ExternalEmbedding(
+                self.args, self.n_relations, self.entity_dim * self.rel_dim, device
+            )
             self.score_func.load_local_emb(local_projection_emb)
 
     def create_async_update(self):
-        """Set up the async update for entity embedding.
-        """
+        """Set up the async update for entity embedding."""
         self.entity_emb.create_async_update()
 
     def finish_async_update(self):
-        """Terminate the async update for entity embedding.
-        """
+        """Terminate the async update for entity embedding."""
         self.entity_emb.finish_async_update()
-
 
     def pull_model(self, client, pos_g, neg_g):
         with th.no_grad():
-            entity_id = F.cat(seq=[pos_g.ndata['id'], neg_g.ndata['id']], dim=0)
-            relation_id = pos_g.edata['id']
+            entity_id = F.cat(seq=[pos_g.ndata["id"], neg_g.ndata["id"]], dim=0)
+            relation_id = pos_g.edata["id"]
             entity_id = F.tensor(np.unique(F.asnumpy(entity_id)))
             relation_id = F.tensor(np.unique(F.asnumpy(relation_id)))
 
             l2g = client.get_local2global()
             global_entity_id = l2g[entity_id]
 
-            entity_data = client.pull(name='entity_emb', id_tensor=global_entity_id)
-            relation_data = client.pull(name='relation_emb', id_tensor=relation_id)
+            entity_data = client.pull(name="entity_emb", id_tensor=global_entity_id)
+            relation_data = client.pull(name="relation_emb", id_tensor=relation_id)
 
             self.entity_emb.emb[entity_id] = entity_data
             self.relation_emb.emb[relation_id] = relation_data
-
 
     def push_gradient(self, client):
         with th.no_grad():
             l2g = client.get_local2global()
             for entity_id, entity_data in self.entity_emb.trace:
                 grad = entity_data.grad.data
-                global_entity_id =l2g[entity_id]
-                client.push(name='entity_emb', id_tensor=global_entity_id, data_tensor=grad)
+                global_entity_id = l2g[entity_id]
+                client.push(
+                    name="entity_emb", id_tensor=global_entity_id, data_tensor=grad
+                )
 
             for relation_id, relation_data in self.relation_emb.trace:
                 grad = relation_data.grad.data
-                client.push(name='relation_emb', id_tensor=relation_id, data_tensor=grad)
+                client.push(
+                    name="relation_emb", id_tensor=relation_id, data_tensor=grad
+                )
 
         self.entity_emb.trace = []
         self.relation_emb.trace = []
