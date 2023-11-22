@@ -342,8 +342,13 @@ class ExternalEmbedding:
 
         if "relation_type" in embedding_df.columns:
             embedding_df = embedding_df.rename(columns={"relation_type": "id"})
-        elif "entity_id" in embedding_df.columns and "entity_type" in embedding_df.columns:
-            embedding_df["id"] = embedding_df["entity_type"] + "::" + embedding_df["entity_id"]
+        elif (
+            "entity_id" in embedding_df.columns
+            and "entity_type" in embedding_df.columns
+        ):
+            embedding_df["id"] = (
+                embedding_df["entity_type"] + "::" + embedding_df["entity_id"]
+            )
 
         # Function to generate a random embedding array
         def random_embedding(length):
@@ -356,16 +361,26 @@ class ExternalEmbedding:
         # Merge the dataframes on 'id', preserving the order of idx_ids
         merged_df = pd.merge(idx_ids, embedding_df, on="id", how="left")
 
+        def isna(x):
+            if isinstance(x, np.ndarray):
+                return np.isnan(x).any()
+            elif isinstance(x, list):
+                return pd.isna(x).any()
+            elif isinstance(x, float):
+                return pd.isna(x)
+            else:
+                raise ValueError(f"Unknown type: {type(x)}")
+
         # Check if embedding is NaN and replace with a random embedding
-        merged_df['embedding'] = merged_df['embedding'].apply(
-            lambda x: random_embedding(embedding_length) if pd.isna(x) else x
-        )        
+        merged_df["embedding"] = merged_df["embedding"].apply(
+            lambda x: random_embedding(embedding_length) if isna(x) else x
+        )
 
         # Sort the merged dataframe by 'index' to ensure the order is correct
-        merged_df = merged_df.sort_values(by='index')
+        merged_df = merged_df.sort_values(by="idx")
 
         # Extract the 'embedding' column as a list
-        ordered_embeddings = merged_df['embedding'].tolist()
+        ordered_embeddings = merged_df["embedding"].tolist()
 
         return np.array(ordered_embeddings)
 

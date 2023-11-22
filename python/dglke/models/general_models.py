@@ -437,8 +437,8 @@ class KEModel(object):
             entity_dims = entity_embs.shape[1]
             relation_dims = relation_embs.shape[1]
 
-            assert entity_dims == self.entity_emb.emb.shape[1]
-            assert relation_dims == self.relation_emb.emb.shape[1]
+            assert entity_dims == self.entity_emb.emb.shape[1], "entity dim not match"
+            assert relation_dims == self.relation_emb.emb.shape[1], "relation dim not match"
 
             self.entity_emb.load_emb(entity_embs)
             self.relation_emb.load_emb(relation_embs)
