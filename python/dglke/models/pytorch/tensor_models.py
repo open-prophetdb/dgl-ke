@@ -379,6 +379,9 @@ class ExternalEmbedding:
         # Sort the merged dataframe by 'index' to ensure the order is correct
         merged_df = merged_df.sort_values(by="idx")
 
+        emb_filepath = emb_file.replace(".tsv", "_ordered.tsv")
+        merged_df.to_csv(emb_filepath, sep="\t", index=False)
+
         # Extract the 'embedding' column as a list
         ordered_embeddings = merged_df["embedding"].tolist()
 
