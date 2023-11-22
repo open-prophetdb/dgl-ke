@@ -350,10 +350,6 @@ class ExternalEmbedding:
                 embedding_df["entity_type"] + "::" + embedding_df["entity_id"]
             )
 
-        # Function to generate a random embedding array
-        def random_embedding(length):
-            return np.random.rand(length)
-
         # Retrieve the length of the embeddings from emb_df
         # Assuming all embeddings have the same length
         embedding_length = len(embedding_df["embedding"].iloc[0])
@@ -371,21 +367,36 @@ class ExternalEmbedding:
             else:
                 raise ValueError(f"Unknown type: {type(x)}")
 
-        # Check if embedding is NaN and replace with a random embedding
-        merged_df["embedding"] = merged_df["embedding"].apply(
-            lambda x: random_embedding(embedding_length) if isna(x) else x
-        )
-
         # Sort the merged dataframe by 'index' to ensure the order is correct
         merged_df = merged_df.sort_values(by="idx")
 
-        emb_filepath = emb_file.replace(".tsv", "_ordered.tsv")
-        merged_df.to_csv(emb_filepath, sep="\t", index=False)
+        print("Merge external embeddings with initialized embs.")
+        print(
+            f"Number of missing embeddings: {merged_df['embedding'].apply(isna).sum()}"
+        )
 
         # Extract the 'embedding' column as a list
         ordered_embeddings = merged_df["embedding"].tolist()
 
-        return np.array(ordered_embeddings)
+        cloned_emb = self.emb.clone()
+
+        # Update self.emb with the ordered embeddings when the embeddings are not nan
+        for idx, emb in enumerate(ordered_embeddings):
+            if not isna(emb):
+                # print(f"Updating embedding for {merged_df['id'].iloc[idx]}")
+                cloned_emb[idx] = th.Tensor(emb)
+            else:
+                print(
+                    f"Missing embedding for {merged_df['id'].iloc[idx]}, using embeding from random initialization instead."
+                )
+
+        emb_filepath = emb_file.replace(".tsv", "_ordered.tsv")
+        merged_df["embedding"] = merged_df["embedding"].apply(
+            lambda x: "|".join([str(i) for i in x]) if not isna(x) else ""
+        )
+        merged_df.to_csv(emb_filepath, sep="\t", index=False)
+
+        return cloned_emb
 
     def load_emb(self, emb_array):
         """Load embeddings from numpy array.
