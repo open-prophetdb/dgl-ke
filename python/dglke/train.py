@@ -110,16 +110,18 @@ def prepare_save_path(args):
     if not os.path.exists(args.save_path):
         os.makedirs(args.save_path)
 
+    return n
+
 
 def main():
     args = ArgParser().parse_args()
 
-    prepare_save_path(args)
+    index = prepare_save_path(args)
 
     if args.enable_wandb:
         import wandb
 
-        name = f"{args.dataset}_{args.model_name}".lower()
+        name = f"{args.dataset}_{args.model_name}_{index}".lower()
         wandb.init(project="biomedical-knowledge-graph", name=name, config=args, entity=args.wandb_entity)
         wandb.config.update(args)
 
