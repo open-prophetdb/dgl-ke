@@ -90,6 +90,12 @@ class ArgParser(CommonArgParser):
             default=False,
             help="Enable wandb for logging",
         )
+        self.add_argument(
+            "--wandb-entity",
+            type=str,
+            default="yjcyxky",
+            help="wandb entity name",
+        )
 
 
 def prepare_save_path(args):
@@ -114,7 +120,7 @@ def main():
         import wandb
 
         name = f"{args.dataset}_{args.model_name}".lower()
-        wandb.init(project="biomedical-knowledge-graph", name=name, config=args)
+        wandb.init(project="biomedical-knowledge-graph", name=name, config=args, entity=args.wandb_entity)
         wandb.config.update(args)
 
         args.wandb = wandb
