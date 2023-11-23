@@ -33,6 +33,16 @@ def get_compatible_batch_size(batch_size, neg_sample_size):
     return batch_size
 
 def save_model(args, model, emap_file=None, rmap_file=None):
+    # Remove all objects which are not json serializable
+    import copy
+
+    # Assuming 'args' is an instance of argparse.Namespace or a similar object
+    args = copy.copy(args)
+
+    # Check if 'wandb' attribute exists before attempting to delete it
+    if hasattr(args, 'wandb'):
+        delattr(args, 'wandb')
+
     if not os.path.exists(args.save_path):
         os.mkdir(args.save_path)
     print('Save model to {}'.format(args.save_path))

@@ -217,6 +217,7 @@ def main():
         print("-------------- Test result --------------")
         for k, v in metrics.items():
             print('Test average {}: {}'.format(k, v))
+            args.wandb and args.wandb.log({k: v, "mode": "test"})
         print("-----------------------------------------")
 
         for proc in procs:

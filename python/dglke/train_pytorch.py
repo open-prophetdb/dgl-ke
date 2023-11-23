@@ -508,7 +508,7 @@ def dist_train_test(
             print("-------------- Test result --------------")
             for k, v in metrics.items():
                 print("Test average {} : {}".format(k, v))
-                args.wandb and args.wandb.log({k: v, "mode": "test", "proc_num": rank})
+                args.wandb and args.wandb.log({k: v, "mode": "test"})
             print("-----------------------------------------")
 
             for proc in procs:
