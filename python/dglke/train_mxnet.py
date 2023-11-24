@@ -113,7 +113,7 @@ def train(
             for k in logs[0].keys():
                 v = sum(l[k] for l in logs) / len(logs)
                 print("[Train]({}/{}) average {}: {}".format(step, args.max_step, k, v))
-                args.wandb and args.wandb.log({k: v, "mode": "train"}, step=step)
+                args.wandb and args.wandb.log({f"Train_{k}": v, "mode": "train"}, step=step)
             logs = []
             print(time.time() - start)
             start = time.time()

@@ -189,7 +189,7 @@ def train(
                         )
                     )
                     args.wandb and args.wandb.log(
-                        {k: v, "proc_num": rank, "mode": "train"},
+                        {f"Proc{rank}_Train_{k}": v, "proc_num": rank, "mode": "train"},
                         step=step + 1,
                     )
                 logs = []
@@ -313,7 +313,7 @@ def test(args, model, test_samplers, rank=0, mode="Test", queue=None):
                 for k, v in metrics.items():
                     print("[{}]{} average {}: {}".format(rank, mode, k, v))
                     args.wandb and args.wandb.log(
-                        {f"{mode}_{k}": v, "proc_num": rank, "mode": mode.lower()}
+                        {f"Proc{rank}_{mode}_{k}": v, "proc_num": rank, "mode": mode.lower()}
                     )
         test_samplers[0] = test_samplers[0].reset()
         test_samplers[1] = test_samplers[1].reset()
