@@ -190,10 +190,7 @@ def train(
                     )
                     args.wandb and args.wandb.log(
                         {
-                            k: v,
-                            "max_step": args.max_step,
-                            "mode": "train",
-                            "proc_num": rank,
+                            f"proc_{rank}_{k}": v
                         },
                         step=step + 1,
                     )
@@ -210,12 +207,10 @@ def train(
                 )
                 args.wandb and args.wandb.log(
                     {
-                        "mode": "train",
-                        "proc_num": rank,
-                        "sample_time": sample_time,
-                        "forward_time": forward_time,
-                        "backward_time": backward_time,
-                        "update_time": update_time,
+                        f"proc_{rank}_sample_time": sample_time,
+                        f"proc_{rank}_forward_time": forward_time,
+                        f"proc_{rank}_backward_time": backward_time,
+                        f"proc_{rank}_update_time": update_time,
                     },
                     step=step + 1,
                 )
@@ -317,9 +312,7 @@ def test(args, model, test_samplers, rank=0, mode="Test", queue=None):
             else:
                 for k, v in metrics.items():
                     print("[{}]{} average {}: {}".format(rank, mode, k, v))
-                    args.wandb and args.wandb.log(
-                        {k: v, "mode": mode, "proc_num": rank}
-                    )
+                    args.wandb and args.wandb.log({f"{rank}_{mode}_{k}".lower(): v})
         test_samplers[0] = test_samplers[0].reset()
         test_samplers[1] = test_samplers[1].reset()
 
@@ -508,7 +501,7 @@ def dist_train_test(
             print("-------------- Test result --------------")
             for k, v in metrics.items():
                 print("Test average {} : {}".format(k, v))
-                args.wandb and args.wandb.log({k: v, "mode": "test"})
+                args.wandb and args.wandb.log({f"test_{k}".lower(): v})
             print("-----------------------------------------")
 
             for proc in procs:
