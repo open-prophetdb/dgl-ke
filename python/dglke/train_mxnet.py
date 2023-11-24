@@ -167,6 +167,6 @@ def test(args, model, test_samplers, rank=0, mode="Test", queue=None):
 
     for k, v in metrics.items():
         print("{} average {}: {}".format(mode, k, v))
-        args.wandb and args.wandb.log({k: v, "mode": mode.lower()})
+        args.wandb and args.wandb.log({f"{mode}_{k}": v, "mode": mode.lower()})
     for i in range(len(test_samplers)):
         test_samplers[i] = test_samplers[i].reset()

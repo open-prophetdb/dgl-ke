@@ -189,11 +189,7 @@ def train(
                         )
                     )
                     args.wandb and args.wandb.log(
-                        {
-                            k: v,
-                            "proc_num": rank,
-                            "mode": "train"
-                        },
+                        {k: v, "proc_num": rank, "mode": "train"},
                         step=step + 1,
                     )
                 logs = []
@@ -214,7 +210,7 @@ def train(
                         "backward_time": backward_time,
                         "update_time": update_time,
                         "proc_num": rank,
-                        "mode": "train"
+                        "mode": "train",
                     },
                     step=step + 1,
                 )
@@ -316,7 +312,9 @@ def test(args, model, test_samplers, rank=0, mode="Test", queue=None):
             else:
                 for k, v in metrics.items():
                     print("[{}]{} average {}: {}".format(rank, mode, k, v))
-                    args.wandb and args.wandb.log({k: v, "proc_num": rank, "mode": mode.lower()})
+                    args.wandb and args.wandb.log(
+                        {f"{mode}_{k}": v, "proc_num": rank, "mode": mode.lower()}
+                    )
         test_samplers[0] = test_samplers[0].reset()
         test_samplers[1] = test_samplers[1].reset()
 
@@ -505,7 +503,7 @@ def dist_train_test(
             print("-------------- Test result --------------")
             for k, v in metrics.items():
                 print("Test average {} : {}".format(k, v))
-                args.wandb and args.wandb.log({k: v, "mode": "test"})
+                args.wandb and args.wandb.log({f"Test_{k}": v, "mode": "test"})
             print("-----------------------------------------")
 
             for proc in procs:
