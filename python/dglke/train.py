@@ -510,7 +510,7 @@ def main():
                 print("-------------- Test result --------------")
                 for k, v in metrics.items():
                     print("Test average {} : {}".format(k, v))
-                    args.wandb and args.wandb.log({f"test_{k}".lower(): v})
+                    args.wandb and args.wandb.log({k: v, "mode": "test"})
                 print("-----------------------------------------")
 
             for proc in procs:
@@ -525,7 +525,7 @@ def main():
 
         test_time = time.time() - start
         print("testing takes {:.3f} seconds".format(test_time))
-        args.wandb and args.wandb.log({"test_time": test_time})
+        args.wandb and args.wandb.log({"time": test_time, "mode": "test"})
 
 
 if __name__ == "__main__":

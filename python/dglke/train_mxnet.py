@@ -113,7 +113,7 @@ def train(
             for k in logs[0].keys():
                 v = sum(l[k] for l in logs) / len(logs)
                 print("[Train]({}/{}) average {}: {}".format(step, args.max_step, k, v))
-                args.wandb and args.wandb.log({f"train_{k}".lower(): v}, step=step)
+                args.wandb and args.wandb.log({k: v, "mode": "train"}, step=step)
             logs = []
             print(time.time() - start)
             start = time.time()
@@ -167,6 +167,6 @@ def test(args, model, test_samplers, rank=0, mode="Test", queue=None):
 
     for k, v in metrics.items():
         print("{} average {}: {}".format(mode, k, v))
-        args.wandb and args.wandb.log({f"{mode}_{k}".lower(): v})
+        args.wandb and args.wandb.log({k: v, "mode": mode.lower()})
     for i in range(len(test_samplers)):
         test_samplers[i] = test_samplers[i].reset()
