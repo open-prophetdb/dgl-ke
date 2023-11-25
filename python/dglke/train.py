@@ -421,7 +421,7 @@ def main():
 
     init_time = time.time() - init_time_start
     print("Total initialize time {:.3f} seconds".format(init_time))
-    args.wandb and args.wandb.log({"init_time": init_time})
+    'wandb' in vars(args) and  args.wandb.log({"init_time": init_time})
 
     # train
     start = time.time()
@@ -510,7 +510,7 @@ def main():
                 print("-------------- Test result --------------")
                 for k, v in metrics.items():
                     print("Test average {} : {}".format(k, v))
-                    args.wandb and args.wandb.log({f"Test_{k}": v, "mode": "test"})
+                    'wandb' in vars(args) and  args.wandb.log({f"Test_{k}": v, "mode": "test"})
                 print("-----------------------------------------")
 
             for proc in procs:
@@ -525,7 +525,7 @@ def main():
 
         test_time = time.time() - start
         print("testing takes {:.3f} seconds".format(test_time))
-        args.wandb and args.wandb.log({"time": test_time, "mode": "test"})
+        'wandb' in vars(args) and  args.wandb.log({"time": test_time, "mode": "test"})
 
 
 if __name__ == "__main__":

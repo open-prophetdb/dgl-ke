@@ -188,7 +188,7 @@ def train(
                             rank, (step + 1), args.max_step, k, v
                         )
                     )
-                    args.wandb and args.wandb.log(
+                    'wandb' in vars(args) and  args.wandb.log(
                         {f"Proc{rank}_Train_{k}": v, "proc_num": rank, "mode": "train"},
                         step=step + 1,
                     )
@@ -203,7 +203,7 @@ def train(
                         rank, sample_time, forward_time, backward_time, update_time
                     )
                 )
-                args.wandb and args.wandb.log(
+                'wandb' in vars(args) and  args.wandb.log(
                     {
                         "sample_time": sample_time,
                         "forward_time": forward_time,
@@ -312,7 +312,7 @@ def test(args, model, test_samplers, rank=0, mode="Test", queue=None):
             else:
                 for k, v in metrics.items():
                     print("[{}]{} average {}: {}".format(rank, mode, k, v))
-                    args.wandb and args.wandb.log(
+                    'wandb' in vars(args) and  args.wandb.log(
                         {f"Proc{rank}_{mode}_{k}": v, "proc_num": rank, "mode": mode.lower()}
                     )
         test_samplers[0] = test_samplers[0].reset()
@@ -503,7 +503,7 @@ def dist_train_test(
             print("-------------- Test result --------------")
             for k, v in metrics.items():
                 print("Test average {} : {}".format(k, v))
-                args.wandb and args.wandb.log({f"Test_{k}": v, "mode": "test"})
+                'wandb' in vars(args) and  args.wandb.log({f"Test_{k}": v, "mode": "test"})
             print("-----------------------------------------")
 
             for proc in procs:
