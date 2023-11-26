@@ -99,6 +99,14 @@ class ArgParser(CommonArgParser):
 
 
 def prepare_save_path(args):
+    """Prepare the saving path for a model. [Deprecated]
+
+    Args:
+        args (argparse.Namespace): Arguments.
+
+    Returns:
+        int: The index of the saving path.
+    """
     if not os.path.exists(args.save_path):
         os.mkdir(args.save_path)
 
@@ -116,12 +124,14 @@ def prepare_save_path(args):
 def main():
     args = ArgParser().parse_args()
 
-    index = prepare_save_path(args)
+    # index = prepare_save_path(args)
+    if os.path.exists(args.save_path) and os.listdir(args.save_path):
+        raise FileExistsError(f"Save path {args.save_path} is not empty, please check it.")
 
     if args.enable_wandb:
         import wandb
 
-        name = f"{args.dataset}_{args.model_name}_{index}".lower()
+        name = os.path.basename(args.save_path)
         wandb.init(project="biomedical-knowledge-graph", name=name, config=args, entity=args.wandb_entity)
         wandb.config.update(args)
 
@@ -526,6 +536,14 @@ def main():
         test_time = time.time() - start
         print("testing takes {:.3f} seconds".format(test_time))
         'wandb' in vars(args) and  args.wandb.log({"time": test_time, "mode": "test"})
+
+    # log dataset to wandb
+    if 'wandb' in vars(args):
+        args.wandb.log({"n_entities": dataset.n_entities, "n_relations": dataset.n_relations})
+        
+        artifact = wandb.Artifact('dataset', type='dataset')
+        artifact.add_file(args.data_path)
+        args.wandb.log_artifact(artifact)
 
 
 if __name__ == "__main__":
