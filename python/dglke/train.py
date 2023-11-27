@@ -96,6 +96,12 @@ class ArgParser(CommonArgParser):
             default="yjcyxky",
             help="wandb entity name",
         )
+        self.add_argument(
+            "--wandb-project",
+            type=str,
+            default="biomedgps-kge",
+            help="wandb project name",
+        )
 
 
 def prepare_save_path(args):
@@ -126,13 +132,20 @@ def main():
 
     # index = prepare_save_path(args)
     if os.path.exists(args.save_path) and os.listdir(args.save_path):
-        raise FileExistsError(f"Save path {args.save_path} is not empty, please check it.")
+        raise FileExistsError(
+            f"Save path {args.save_path} is not empty, please check it."
+        )
 
     if args.enable_wandb:
         import wandb
 
         name = os.path.basename(args.save_path)
-        wandb.init(project="biomedical-knowledge-graph", name=name, config=args, entity=args.wandb_entity)
+        wandb.init(
+            project=args.wandb_project or "biomedgps-kge",
+            name=name,
+            config=args,
+            entity=args.wandb_entity,
+        )
         wandb.config.update(args)
 
         args.wandb = wandb
@@ -431,7 +444,7 @@ def main():
 
     init_time = time.time() - init_time_start
     print("Total initialize time {:.3f} seconds".format(init_time))
-    'wandb' in vars(args) and  args.wandb.log({"init_time": init_time})
+    "wandb" in vars(args) and args.wandb.log({"init_time": init_time})
 
     # train
     start = time.time()
@@ -520,7 +533,9 @@ def main():
                 print("-------------- Test result --------------")
                 for k, v in metrics.items():
                     print("Test average {} : {}".format(k, v))
-                    'wandb' in vars(args) and  args.wandb.log({f"Test_{k}": v, "mode": "test"})
+                    "wandb" in vars(args) and args.wandb.log(
+                        {f"Test_{k}": v, "mode": "test"}
+                    )
                 print("-----------------------------------------")
 
             for proc in procs:
@@ -535,13 +550,15 @@ def main():
 
         test_time = time.time() - start
         print("testing takes {:.3f} seconds".format(test_time))
-        'wandb' in vars(args) and  args.wandb.log({"time": test_time, "mode": "test"})
+        "wandb" in vars(args) and args.wandb.log({"time": test_time, "mode": "test"})
 
     # log dataset to wandb
-    if 'wandb' in vars(args):
-        args.wandb.log({"n_entities": dataset.n_entities, "n_relations": dataset.n_relations})
-        
-        artifact = wandb.Artifact('dataset', type='dataset')
+    if "wandb" in vars(args):
+        args.wandb.log(
+            {"n_entities": dataset.n_entities, "n_relations": dataset.n_relations}
+        )
+
+        artifact = wandb.Artifact("dataset", type="dataset")
         artifact.add_file(args.data_path)
         args.wandb.log_artifact(artifact)
 
