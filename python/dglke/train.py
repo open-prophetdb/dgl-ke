@@ -554,13 +554,25 @@ def main():
 
     # log dataset to wandb
     if "wandb" in vars(args):
-        args.wandb.log(
-            {"n_entities": n_entities, "n_relations": n_relations}
-        )
+        args.wandb.log({"n_entities": n_entities, "n_relations": n_relations})
 
-        artifact = wandb.Artifact("dataset", type="dataset")
-        artifact.add_file(args.data_path)
-        args.wandb.log_artifact(artifact)
+        for file in [
+            "test.tsv",
+            "train.tsv",
+            "valid.tsv",
+            "entities_embeddings.tsv",
+            "relation_types_embeddings.tsv",
+        ]:
+            if os.path.exists(os.path.join(args.data_path, file)):
+                # Tar and gzip the file
+                os.system(f"tar -czvf {file}.tar.gz {file}")
+                file = f"{file}.tar.gz"
+
+                artifact = wandb.Artifact(file, type="dataset")
+                artifact.add_file(os.path.join(args.data_path, file))
+                args.wandb.log_artifact(artifact)
+            else:
+                print(f"File {file} not found, skipping")
 
 
 if __name__ == "__main__":
