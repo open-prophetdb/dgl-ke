@@ -555,7 +555,7 @@ def main():
     # log dataset to wandb
     if "wandb" in vars(args):
         args.wandb.log(
-            {"n_entities": dataset.n_entities, "n_relations": dataset.n_relations}
+            {"n_entities": n_entities, "n_relations": n_relations}
         )
 
         artifact = wandb.Artifact("dataset", type="dataset")
