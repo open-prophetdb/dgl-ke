@@ -446,12 +446,15 @@ def main():
             "relation_types_embeddings.tsv",
         ]:
             path = os.path.join(args.data_path, file)
-            if os.path.exists(path):
+            destfile = os.path.join(args.data_path, f"{file}.tar.gz")
+            
+            # Skip if the file is already tarred for avoiding re-tarring and causing the hash to change
+            if os.path.exists(path) and not os.path.exists(destfile):
                 # Tar and gzip the file
-                destfile = os.path.join(args.data_path, f"{file}.tar.gz")
                 with tarfile.open(destfile, "w:gz") as tar:
                     tar.add(path, arcname=file)
 
+            if os.path.exists(destfile):
                 # Log the artifact
                 artifact = wandb.Artifact(file, type="dataset")
                 artifact.add_file(os.path.join(args.data_path, destfile))
