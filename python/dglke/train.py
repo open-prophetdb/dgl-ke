@@ -448,7 +448,7 @@ def main():
             path = os.path.join(args.data_path, file)
             if os.path.exists(path):
                 # Tar and gzip the file
-                destfile = f"{file}.tar.gz"
+                destfile = os.path.join(args.data_path, f"{file}.tar.gz")
                 with tarfile.open(destfile, "w:gz") as tar:
                     tar.add(path, arcname=file)
 
