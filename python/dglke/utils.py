@@ -64,7 +64,7 @@ def save_model(args, model, emap_file=None, rmap_file=None):
 
     # Upload model to wandb as artifact
     if "wandb" in vars(args):
-        artifact = args.wandb.Artifact("model_weights", type="model")
+        artifact = args.wandb.Artifact("weights", type="model")
         artifact.add_dir(args.save_path)
         args.wandb.log_artifact(artifact)
 

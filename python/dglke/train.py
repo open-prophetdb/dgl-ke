@@ -19,6 +19,7 @@
 
 import os, gc
 import time
+import tarfile
 
 from .dataloader import (
     ConstructGraph,
@@ -433,6 +434,31 @@ def main():
     emap_file = dataset.emap_fname
     rmap_file = dataset.rmap_fname
 
+    # log dataset to wandb
+    if "wandb" in vars(args):
+        args.wandb.log({"n_entities": n_entities, "n_relations": n_relations})
+
+        for file in [
+            "test.tsv",
+            "train.tsv",
+            "valid.tsv",
+            "entities_embeddings.tsv",
+            "relation_types_embeddings.tsv",
+        ]:
+            path = os.path.join(args.data_path, file)
+            if os.path.exists(path):
+                # Tar and gzip the file
+                destfile = f"{file}.tar.gz"
+                with tarfile.open(destfile, "w:gz") as tar:
+                    tar.add(path, arcname=file)
+
+                # Log the artifact
+                artifact = wandb.Artifact(file, type="dataset")
+                artifact.add_file(os.path.join(args.data_path, destfile))
+                args.wandb.log_artifact(artifact)
+            else:
+                print(f"File {file} not found, skipping")
+
     # We need to free all memory referenced by dataset.
     eval_dataset = None
     dataset = None
@@ -551,28 +577,6 @@ def main():
         test_time = time.time() - start
         print("testing takes {:.3f} seconds".format(test_time))
         "wandb" in vars(args) and args.wandb.log({"time": test_time, "mode": "test"})
-
-    # log dataset to wandb
-    if "wandb" in vars(args):
-        args.wandb.log({"n_entities": n_entities, "n_relations": n_relations})
-
-        for file in [
-            "test.tsv",
-            "train.tsv",
-            "valid.tsv",
-            "entities_embeddings.tsv",
-            "relation_types_embeddings.tsv",
-        ]:
-            if os.path.exists(os.path.join(args.data_path, file)):
-                # Tar and gzip the file
-                os.system(f"tar -czvf {file}.tar.gz {file}")
-                file = f"{file}.tar.gz"
-
-                artifact = wandb.Artifact(file, type="dataset")
-                artifact.add_file(os.path.join(args.data_path, file))
-                args.wandb.log_artifact(artifact)
-            else:
-                print(f"File {file} not found, skipping")
 
 
 if __name__ == "__main__":
