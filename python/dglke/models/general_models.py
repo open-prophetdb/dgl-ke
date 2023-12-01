@@ -258,6 +258,16 @@ class KEModel(object):
         entity_dim = 2 * hidden_dim if double_entity_emb else hidden_dim
         relation_dim = 2 * hidden_dim if double_relation_emb else hidden_dim
 
+        if hasattr(args, "entity_emb_file"):
+            self.init_entities_emb_file = args.entity_emb_file
+        else:
+            self.init_entities_emb_file = "entities_embeddings.tsv"
+
+        if hasattr(args, "relation_emb_file"):
+            self.init_relations_emb_file = args.relation_emb_file
+        else:
+            self.init_relations_emb_file = "relation_types_embeddings.tsv"
+
         device = get_device(args)
 
         self.loss_gen = LossGenerator(
@@ -379,8 +389,8 @@ class KEModel(object):
         self.score_func.load(path, dataset + "_" + self.model_name)
 
     def get_emb_files(self, datadir):
-        entity_emb_file = os.path.join(datadir, "entities_embeddings.tsv")
-        relation_emb_file = os.path.join(datadir, "relation_types_embeddings.tsv")
+        entity_emb_file = self.init_entities_emb_file
+        relation_emb_file = self.init_relations_emb_file
         entity_idx_id_file = os.path.join(datadir, "entities.tsv")
         relation_idx_id_file = os.path.join(datadir, "relations.tsv")
         return [
@@ -438,7 +448,9 @@ class KEModel(object):
             relation_dims = relation_embs.shape[1]
 
             assert entity_dims == self.entity_emb.emb.shape[1], "entity dim not match"
-            assert relation_dims == self.relation_emb.emb.shape[1], "relation dim not match"
+            assert (
+                relation_dims == self.relation_emb.emb.shape[1]
+            ), "relation dim not match"
 
             self.entity_emb.load_emb(entity_embs)
             self.relation_emb.load_emb(relation_embs)

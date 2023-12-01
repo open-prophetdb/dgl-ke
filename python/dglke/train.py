@@ -103,6 +103,18 @@ class ArgParser(CommonArgParser):
             default="biomedgps-kge",
             help="wandb project name",
         )
+        self.add_argument(
+            "--entity-emb-file",
+            type=str,
+            default="entities_embeddings.tsv",
+            help="entity embedding file name",
+        )
+        self.add_argument(
+            "--relation-emb-file",
+            type=str,
+            default="relation_types_embeddings.tsv",
+            help="relation embedding file name",
+        )
 
 
 def prepare_save_path(args):
@@ -438,12 +450,24 @@ def main():
     if "wandb" in vars(args):
         args.wandb.log({"n_entities": n_entities, "n_relations": n_relations})
 
+        if hasattr(args, "entity_emb_file"):
+            args.wandb.log({"entity_emb_file": args.entity_emb_file})
+            entity_emb_file = os.path.join(args.data_path, args.entity_emb_file)
+        else:
+            entity_emb_file = None
+
+        if hasattr(args, "relation_emb_file"):
+            args.wandb.log({"relation_emb_file": args.relation_emb_file})
+            relation_emb_file = os.path.join(args.data_path, args.relation_emb_file)
+        else:
+            relation_emb_file = None
+
         for file in [
             "test.tsv",
             "train.tsv",
             "valid.tsv",
-            "entities_embeddings.tsv",
-            "relation_types_embeddings.tsv",
+            entity_emb_file or "entities_embeddings.tsv",
+            relation_emb_file or "relation_types_embeddings.tsv",
         ]:
             path = os.path.join(args.data_path, file)
             destfile = os.path.join(args.data_path, f"{file}.tar.gz")
