@@ -259,12 +259,12 @@ class KEModel(object):
         relation_dim = 2 * hidden_dim if double_relation_emb else hidden_dim
 
         if hasattr(args, "entity_emb_file"):
-            self.init_entities_emb_file = args.entity_emb_file
+            self.init_entities_emb_file = os.path.basename(args.entity_emb_file)
         else:
             self.init_entities_emb_file = "entities_embeddings.tsv"
 
         if hasattr(args, "relation_emb_file"):
-            self.init_relations_emb_file = args.relation_emb_file
+            self.init_relations_emb_file = os.path.basename(args.relation_emb_file)
         else:
             self.init_relations_emb_file = "relation_types_embeddings.tsv"
 
@@ -389,8 +389,8 @@ class KEModel(object):
         self.score_func.load(path, dataset + "_" + self.model_name)
 
     def get_emb_files(self, datadir):
-        entity_emb_file = self.init_entities_emb_file
-        relation_emb_file = self.init_relations_emb_file
+        entity_emb_file = os.path.join(datadir, self.init_entities_emb_file)
+        relation_emb_file = os.path.join(datadir, self.init_relations_emb_file)
         entity_idx_id_file = os.path.join(datadir, "entities.tsv")
         relation_idx_id_file = os.path.join(datadir, "relations.tsv")
         return [
