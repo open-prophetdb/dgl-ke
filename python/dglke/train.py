@@ -452,13 +452,13 @@ def main():
 
         if hasattr(args, "entity_emb_file"):
             args.wandb.log({"entity_emb_file": args.entity_emb_file})
-            entity_emb_file = os.path.join(args.data_path, args.entity_emb_file)
+            entity_emb_file = args.entity_emb_file
         else:
             entity_emb_file = None
 
         if hasattr(args, "relation_emb_file"):
             args.wandb.log({"relation_emb_file": args.relation_emb_file})
-            relation_emb_file = os.path.join(args.data_path, args.relation_emb_file)
+            relation_emb_file = args.relation_emb_file
         else:
             relation_emb_file = None
 
@@ -471,7 +471,7 @@ def main():
         ]:
             path = os.path.join(args.data_path, file)
             destfile = os.path.join(args.data_path, f"{file}.tar.gz")
-            
+
             # Skip if the file is already tarred for avoiding re-tarring and causing the hash to change
             if os.path.exists(path) and not os.path.exists(destfile):
                 # Tar and gzip the file
@@ -480,6 +480,7 @@ def main():
 
             if os.path.exists(destfile):
                 # Log the artifact
+                file = os.path.basename(file)
                 artifact = wandb.Artifact(file, type="dataset")
                 artifact.add_file(os.path.join(args.data_path, destfile))
                 args.wandb.log_artifact(artifact)
