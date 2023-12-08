@@ -466,6 +466,8 @@ def main():
             "test.tsv",
             "train.tsv",
             "valid.tsv",
+            "entities.tsv",  # A dictionary of entities
+            "relations.tsv",  # A dictionary of relations
             entity_emb_file or "entities_embeddings.tsv",
             relation_emb_file or "relation_types_embeddings.tsv",
         ]:
