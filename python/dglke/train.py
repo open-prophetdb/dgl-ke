@@ -467,9 +467,11 @@ def main():
             "train.tsv",
             "valid.tsv",
             "entities.tsv",  # A dictionary of entities
-            "relations.tsv",  # A dictionary of relations
+            "relations.tsv",  # A dictionary of relation types
             entity_emb_file or "entities_embeddings.tsv",
             relation_emb_file or "relation_types_embeddings.tsv",
+            "annotated_entities.tsv", # A list of entities with annotations
+            "knowledge_graph.tsv", # A list of relations between entities with annotations in biomedgps format
         ]:
             path = os.path.join(args.data_path, file)
             destfile = os.path.join(args.data_path, f"{file}.tar.gz")
